@@ -34,14 +34,14 @@
 #     groupmod -g $HOST_GID -o root
 # fi
 
-# to remove project label=project=appstronomer/message-monitor
-# docker system prune --force --all --filter label=project=appstronomer/message-monitor
-# then project label=project=appstronomer/message-monitor could be started with "docker compose up"
+# to remove project label=project=appstronomer/umon
+# docker system prune --force --all --filter label=project=appstronomer/umon
+# then project label=project=appstronomer/umon could be started with "docker compose up"
 
 # to start with rebuild without cache
-# docker compose build --no-cache && docker system prune --force --all --filter label=project=appstronomer/message-monitor --filter label=stage=intermediate && docker compose up --force-recreate
+# docker compose build --no-cache && docker system prune -fa --filter label=project=appstronomer/umon --filter label=stage=intermediate && docker compose up --force-recreate
 # then old images will not be removed
 
-# docker compose build --no-cache && docker system prune --force --all --filter label=project=appstronomer/message-monitor --filter label=stage=intermediate && docker compose up --force-recreate
+# docker compose build --no-cache && docker system prune -fa --filter label=project=appstronomer/umon --filter label=stage=intermediate && docker compose up --force-recreate
 
 # rm -rf './volume-dst/!(README.md)'
