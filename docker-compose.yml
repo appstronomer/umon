@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+
+  monitor:
+    build: ./monitor
+    restart: 'no'
+    ports:
+      - 8080:80
+    volumes:
+      - ./volume-dst:/volume-dst
+    environment:
+      - UIDGID=auto
+    depends_on:
+      - publisher-search
+      - publisher-social
+
+  publisher-social:
+    build: ./publisher
+    expose:
+      - "1883"
+    environment:
+      - START_TARGET=test-social.sh
+
+  publisher-search:
+    build: ./publisher
+    expose:
+      - "1883"
+    environment:
+      - START_TARGET=test-search.sh

@@ -1,0 +1,6 @@
+{
+    "groups": {
+        "Search Engines": ["google.com", "bing.com", "yahoo.com", "ya.ru", "baidu.com", "ask.com", "archive.org"],
+        "Social Media": ["youtube.com", "tiktok.com", "snapchat.com", "whatsapp.com", "wechat.com", "weibo.com", "qq.com", "douyin.com", "kuaishou.com"]
+    }
+}

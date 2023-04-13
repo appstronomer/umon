@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script type="text/javascript" src="MQTTMonitor.js"></script>
+</head>
+<body>
+<h1>MQTT Monitor</h1>
+
+<div id="signin">
+    <h2>Login</h2>
+    <input type="text" name="login" id="login">
+    <input type="password" name="password" id="password">
+    <input type="button" id="enter" value="Enter">
+</div>
+
+<div id="data"></div>
+
+
+<style>
+    .hidden {
+        display: none;
+    }
+    table {
+        table-layout: fixed;
+        text-align: center;
+    }
+    table, th, td {
+        border: 1px solid gray;
+    }
+    td.reading {
+        width: 80px;
+        max-width: 80px;
+        min-width: 80px;
+        height: 35px;
+        max-height: 35px;
+        min-height: 35px;
+    }
+    td.unitname {
+        width: 180px;
+        max-width: 180px;
+        min-width: 180px;
+        font-weight: bold;
+    }
+    td.offline {
+        background-color: red;
+    }
+    td.reading > span{
+        display: block;
+    }
+    td.reading > span:first-child {
+        font-size: 12px;
+    }
+    
+</style>
+
+
+<script>
+    window.onload = function() {
+
+
+        const dataQueue = (function(){
+            function pushBegin(ctx, item) {
+                if(ctx.begin === null) {
+                    ctx.begin = {
+                        item: item,
+                        next: null,
+                        prev: null,
+                    }
+                    ctx.end = ctx.begin
+                } else {
+                    const newObj = {
+                        item: item,
+                        next: ctx.begin,
+                        prev: null
+                    }
+                    ctx.begin.prev = newObj
+                    ctx.begin = newObj
+                }
+                ctx.len += 1
+            }
+
+            function forEach(ctx, callback) {
+                let cur = ctx.begin
+                while(cur !== null) {
+                    callback(cur.item)
+                    cur = cur.next
+                }
+            }
+
+            function pushBefore(ctx, callback) {
+                let cur = ctx.begin
+                let res
+                while(cur !== null) {
+                    res = callback(cur.item)
+                    if(res !== undefined) {
+                        const newObj = {
+                            item: item,
+                            next: cur,
+                            prev: cur.prev
+                        }
+                        if(cur.prev === null) ctx.begin = newObj
+                        cur.prev = newObj
+                        ctx.len += 1
+                        return
+                    }
+                    cur = cur.next
+                }
+            }
+
+            function trimEnd(ctx, count) {
+                let cur
+                for(let i = 0; i < count; ++i) {
+                    if(ctx.end === null) { return }
+                    cur = ctx.end
+                    ctx.end = cur.prev
+                    if(ctx.end !== null) { ctx.end.next = null }
+                    cur.prev = null
+                    ctx.len -= 1
+                }
+            }
+
+            function getBegin(ctx) {
+                if(ctx.begin !== null) {
+                    return ctx.begin.item
+                }
+            }
+
+            function getEnd(ctx) {
+                if(ctx.end !== null) {
+                    return ctx.end.item
+                }
+            }
+
+            return function () {
+                const ctx = {
+                    len: 0,
+                    begin: null,
+                    end: null,
+                }
+                
+                return {
+                    pushBegin: item => pushBegin(ctx, item),
+                    pushBefore: callback => pushBefore(ctx, callback),
+                    trimEnd: count => trimEnd(ctx, count),
+                    forEach: callback => forEach(ctx, callback),
+                    getLen: () => ctx.len,
+                    getBegin: () => getBegin(ctx),
+                    getEnd: () => getEnd(ctx),
+                }
+        }
+        })()
+
+        
+
+
+        async function authToken() {
+            let builder = MQTTMonitor(`${window.location.host}/app`)
+            builder.isSecure(false)
+            let token = window.localStorage.getItem('monitor-token')
+            let adapter
+            if(token) {
+                try {
+                    return await builder.session(token).finalize()
+                } catch (err) {
+                    window.localStorage.removeItem('monitor-token')
+                    data.classList.add("hidden")
+                    enter.addEventListener("click", onEnterClick)
+                    signin.classList.remove("hidden")
+                    console.error(err)
+                }
+            }
+            return null
+        }
+
+        function start(adapter) {
+            const COUNT_VAL = 10
+            console.log('groups', adapter.getGroups())
+            const groups = adapter.getGroups()
+            const ctx = {}
+            for(const groupName in groups) if(groups.hasOwnProperty(groupName)) {
+                const groupWrapper = document.createElement('div')
+                const groupHeader = document.createElement('h3')
+                const groupTable = document.createElement('table')
+                groupHeader.innerHTML = groupName
+                groupWrapper.appendChild(groupHeader)
+                groupWrapper.appendChild(groupTable)
+                const ctxInner = {}
+                ctx[groupName] = ctxInner
+                groups[groupName].forEach(unitName => {
+                    const unitTr = document.createElement('tr')
+                    const tdArr = []
+                    
+                    tdUnitName = document.createElement('td')
+                    tdUnitName.classList.add('unitname')
+                    tdUnitName.classList.add('offline')
+                    tdUnitName.innerHTML = unitName
+                    unitTr.appendChild(tdUnitName)
+                    let td, spanTime, spanValue
+                    for(let i = 0; i < COUNT_VAL; ++i) {
+                        td = document.createElement('td')
+                        spanTime = document.createElement('span')
+                        spanValue = document.createElement('span')
+                        td.classList.add('reading')
+                        td.appendChild(spanTime)
+                        td.appendChild(spanValue)
+                        unitTr.appendChild(td)
+                        tdArr.push({time: spanTime, value: spanValue})
+                    }
+
+                    groupTable.appendChild(unitTr)
+                    ctxInner[unitName] = {data: dataQueue(), tdArr: tdArr, isOnline: false, tdUnitName: tdUnitName}
+                })
+                data.appendChild(groupWrapper)
+            }
+            console.log('ctx', ctx)
+
+
+            adapter.onConnect(() => onConnect(ctx))
+            adapter.onDisconnect(evt => onDisconnect(ctx, evt))
+            adapter.onMessage(msg => onMessage(ctx, msg))
+            let serve = adapter.serve()
+        }
+
+
+        function onMessage(ctx, msg) {
+            let obj = ctx[msg.group]
+            if(!obj) {
+                console.log('Unexpected group:', msg)
+                return
+            }
+            obj = obj[msg.unit]
+            if(!obj) {
+                console.log('Unexpected unit:', msg)
+                return
+            }
+            try {
+                if(msg.type === 'value') {
+                    msg.value = window.atob(msg.value)
+                    const time = new Date(msg.time)
+                    msg.time = `${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`
+                    const begin = obj.data.getBegin()
+                    if(begin) {
+                        if(msg.idx < begin.idx) {
+                            obj.data.pushAfter(item => {
+                                if(item.idx < msg.idx) return msg
+                            })
+                        } else {
+                            obj.data.pushBegin(msg)
+                        }
+                        const overflow = obj.data.getLen() - obj.tdArr.length
+                        if(overflow > 0) {
+                            obj.data.trimEnd(overflow)
+                        }
+                    } else {
+                        obj.data.pushBegin(msg)
+                    }
+                    
+                    let i = obj.tdArr.length - 1
+                    let tdItem
+                    obj.data.forEach(item => {
+                        // obj.tdArr[i].innerHTML = item.value
+                        tdItem = obj.tdArr[i]
+                        tdItem.time.innerHTML = item.time
+                        tdItem.value.innerHTML = item.value
+                        i -= 1
+                    })
+
+                    if(!obj.isOnline) {
+                        obj.isOnline = true
+                        obj.tdUnitName.classList.remove('offline')
+                    }
+
+                    console.log(`value ${msg.group} :: ${msg.unit}`, msg.value)
+                } else if(msg.type === 'online' && !obj.isOnline) {
+                    obj.tdUnitName.classList.remove('offline')
+                    obj.isOnline = true
+                    console.log(`online ${msg.group} :: ${msg.unit}`)
+                } else if(msg.type === 'offline' && obj.isOnline) {
+                    obj.tdUnitName.classList.add('offline')
+                    obj.isOnline = false
+                    console.log(`offline ${msg.group} :: ${msg.unit}`)
+                }
+            } catch (err) {
+                console.error('Error onMessage', err)
+            }
+        }
+
+        function onConnect(ctx) {
+            console.log('Connected')
+        }
+
+        function onDisconnect(ctx, evt) {
+            console.log('Disconnected', evt)
+        }
+
+
+        async function onEnterClick() {
+            const login = document.querySelector('#login').value
+            const password = document.querySelector('#password').value
+            const builder = MQTTMonitor(`${window.location.host}/app`).isSecure(false).credentials(login, password)
+            try {
+                const adapter = await builder.finalize()
+                const token = adapter.getToken()
+                console.log('Token: ', token)
+                window.localStorage.setItem('monitor-token', token)
+                enter.removeEventListener('click', onEnterClick)
+                signin.classList.add("hidden")
+                data.classList.remove("hidden")
+                start(adapter)
+            } catch(err) {
+                console.error(err)
+            }
+        }
+
+        function serveAdapter(adapter) {
+
+        }
+
+
+        const signin = document.querySelector('#signin')
+        const data = document.querySelector('#data')
+        const enter = document.querySelector('#enter')
+        
+        async function main() {
+
+            let adapter = await authToken()
+            if(adapter) {
+                signin.classList.add("hidden")
+                start(adapter)
+                data.classList.remove("hidden")
+            } else {
+                data.classList.add("hidden")
+                enter.addEventListener("click", onEnterClick)
+                signin.classList.remove("hidden")
+            }
+        }
+
+        
+        main().then(res => console.log('activated'))
+    }
+</script>
+</body>
+</html>

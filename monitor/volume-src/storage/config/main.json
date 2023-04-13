@@ -1,0 +1,57 @@
+{
+    "path": {
+        "app": "/app",
+        "public": "/"
+    },
+    "dir": {
+        "users": "storage/config/users",
+        "wplaces": "storage/config/wplaces",
+        "public": "storage/public"
+    },
+    "db": {
+        "tx_count_max": 1,
+        "file": "test.db"
+    },
+    "groups": {
+        "Search Engines": {
+            "client": {
+                "host": "publisher-search",
+                "port": 1883,
+                "id": "monitor-local-search-engines",
+                "keep_alive": 30,
+                "clean_session": false,
+                "capacity": 1
+            },
+            "units": {
+                "google.com": { "topic": "google", "qos": 2, "count_min": 10, "count_max": 20 },
+                "bing.com": { "topic": "bing", "qos": 2, "count_min": 10, "count_max": 20 },
+                "yahoo.com": { "topic": "yahoo", "qos": 2, "count_min": 10, "count_max": 20 },
+                "ya.ru": { "topic": "ya", "qos": 2, "count_min": 10, "count_max": 20 },
+                "baidu.com": { "topic": "baidu", "qos": 2, "count_min": 10, "count_max": 20 },
+                "ask.com": { "topic": "ask", "qos": 2, "count_min": 10, "count_max": 20 },
+                "archive.org": { "topic": "archive", "qos": 2, "count_min": 10, "count_max": 20 }
+            }
+        },
+        "Social Media": {
+            "client": {
+                "host": "publisher-social",
+                "port": 1883,
+                "id": "monitor-local-social-media",
+                "keep_alive": 30,
+                "clean_session": false,
+                "capacity": 1
+            },
+            "units": {
+                "youtube.com": { "topic": "youtube", "qos": 2, "count_min": 10, "count_max": 20 },
+                "tiktok.com": { "topic": "tiktok", "qos": 2, "count_min": 10, "count_max": 20 },
+                "snapchat.com": { "topic": "snapchat", "qos": 2, "count_min": 10, "count_max": 20 },
+                "whatsapp.com": { "topic": "whatsapp", "qos": 2, "count_min": 10, "count_max": 20 },
+                "wechat.com": { "topic": "wechat", "qos": 2, "count_min": 10, "count_max": 20 },
+                "weibo.com": { "topic": "weibo", "qos": 2, "count_min": 10, "count_max": 20 },
+                "qq.com": { "topic": "qq", "qos": 2, "count_min": 10, "count_max": 20 },
+                "douyin.com": { "topic": "douyin", "qos": 2, "count_min": 10, "count_max": 20 },
+                "kuaishou.com": { "topic": "kuaishou", "qos": 2, "count_min": 10, "count_max": 20 }
+            }
+        }
+    }
+}
