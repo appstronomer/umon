@@ -17,4 +17,4 @@ COPY ./volume-src /volume-src
 COPY ./sh-container /sh-container
 COPY --from=adapter-web /project/dst/MQTTMonitor.js /volume-src/storage/public/MQTTMonitor.js
 COPY --from=backend /project/target/x86_64-unknown-linux-musl/release/monitor /volume-src/monitor
-CMD /sh-container/start.sh
+CMD /sh-container/start-monitor.sh

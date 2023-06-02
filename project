@@ -1,0 +1,158 @@
+#!/bin/sh
+
+
+if ! command -v readlink > /dev/null; then 
+    echo "[FAIL] readlink command is required for the script to work"
+    exit 1
+fi
+
+
+self=$(
+    self=${0}
+    while [ -L "${self}" ]
+    do
+        cd "${self%/*}"
+        self=$(readlink "${self}")
+    done
+    cd "${self%/*}"
+    echo $(pwd -P)
+)
+
+
+cd "$self"
+status=0
+
+
+if [ "$1" = "compose" ]; then
+    if [ "$2" = "prune" ]; then
+        cmd="docker system prune --force --all --filter label=project=appstronomer/umon"
+    elif [ "$2" = "build" ]; then
+        cmd="docker system prune --force --all --filter label=project=appstronomer/umon && docker compose build --no-cache && docker system prune -fa --filter label=project=appstronomer/umon --filter label=stage=intermediate"
+    elif [ "$2" = "up" ]; then
+        cmd="docker system prune --force --all --filter label=project=appstronomer/umon && docker compose build --no-cache && docker system prune -fa --filter label=project=appstronomer/umon --filter label=stage=intermediate && docker compose start"
+    elif [ "$2" = "start" ]; then
+        cmd="docker compose start"
+    elif [ "$2" = "stop" ]; then
+        cmd="docker compose stop"
+    elif [ "$2" = "down" ]; then
+        cmd="docker compose down && docker system prune --force --all --filter label=project=appstronomer/umon"
+    elif [ "$2" = "help" ]; then
+        echo "manual for compse command"
+        echo
+        echo "USAGE"
+        echo "  project compose SUBCOMMAND [print]"
+        echo
+        echo "COMMANDS"
+        echo "  help        print manual of project compose command"
+        echo "  prune       prune everything with \"project=appstronomer/umon\" label"
+        echo "  build       prune; build services; prune but with \"stage=intermediate\" label added"
+        echo "  up          build; start services"
+        echo "  start       start services"
+        echo "  stop        stop services"
+        echo "  down        stop services; prune"
+        echo
+        echo "OPTIONS"
+        echo "  print       print inner call which implements compose SUBCOMMAND instead of executing it"
+    else
+        if [ ! -z "$2" ]; then
+            error="[ERR] subcommand \"$2\" not found for \"compose\" command"
+        else
+            error="[ERR] subcommand required for \"compose\" command"
+        fi
+        error="${error}; call \"./project compose help\" to check availible subcommands"
+        status=2
+    fi
+elif [ "$1" = "backend" ]; then
+    if [ "$2" = "build" ]; then
+        cmd="docker run -v $PWD/monitor/backend:/volume -v $PWD/cache/cargo-home:/cargo-home -v $PWD/volume-dst:/volume-dst -v  $PWD/monitor/sh-container:/sh-container --rm -t -e UIDGID=auto clux/muslrust:1.68.2 /sh-container/build-backend.sh"
+    elif [ "$2" = "help" ]; then
+        echo "manual for backend command"
+        echo
+        echo "USAGE"
+        echo "  project backend SUBCOMMAND [print]"
+        echo
+        echo "SUBCOMMANDS"
+        echo "  help        print manual of project backend command"
+        echo "  build       compile backend for musl libc and put it as ./volume-dst/monitor"
+        echo
+        echo "OPTIONS"
+        echo "  print       print inner call which implements backend SUBCOMMAND instead of executing it"
+    else
+        if [ ! -z "$2" ]; then
+            error="[ERR] subcommand \"$2\" not found for \"backend\" command"
+        else
+            error="[ERR] subcommand required for \"backend\" command"
+        fi
+        error="${error}; call \"./project backend help\" to check availible subcommands"
+        status=2
+    fi
+elif [ "$1" = "adapter-web" ]; then
+    if [ "$2" = "build" ]; then
+        cmd="echo \"adapter-web build not implemented yet\""
+    elif [ "$2" = "help" ]; then
+        echo "manual for adapter-web command"
+        echo
+        echo "USAGE"
+        echo "  project adapter-web SUBCOMMAND [print]"
+        echo
+        echo "SUBCOMMANDS"
+        echo "  help        print manual of project adapter-web command"
+        echo "  build       compose adapter for web frontent and put it as ./volume-dst/storage/public/MQTTMonitor.js"
+        echo
+        echo "OPTIONS"
+        echo "  print       print inner call which implements adapter-web SUBCOMMAND instead of executing it"
+    else
+        if [ ! -z "$2" ]; then
+            error="[ERR] subcommand \"$2\" not found for \"adapter-web\" command"
+        else
+            error="[ERR] subcommand required for \"adapter-web\" command"
+        fi
+        error="${error}; call \"./project adapter-web help\" to check availible subcommands"
+        status=2
+    fi
+elif [ "$1" = "help" ]; then
+    echo "manual of project"
+    echo
+    echo "USAGE"
+    echo "  project help"
+    echo "  project COMMAND help"
+    echo "  project COMMAND SUBCOMMAND [print]"
+    echo
+    echo "COMMANDS"
+    echo "  help            print manual of project"
+    echo "  compose         shortcuts for complex docker compose calls"
+    echo "  backend         shortcuts for ./monitor/backend manipulations"
+    echo "  adapter-web     shortcuts for ./monitor/adapter-web manipulations"
+    echo
+    echo "OPTIONS"
+    echo "  print           print inner call which implements COMMAND SUBCOMMAND instead of executing it"
+else
+    if [ ! -z "$2" ]; then
+        error="[ERR] command \"$1\" not found for project"
+    else
+        error="[ERR] command required for project"
+    fi
+    error="${error}; call \"./project help\" to check availible commands"
+    status=2
+fi
+
+
+if [ ! -z "$cmd" ]; then
+    if [ "$3" = "print" ]; then
+        echo "$cmd"
+    elif [ ! -z $3 ]; then
+        echo "[ERR] option \"$3\" not found for \"$1 $2\" call; type \"./project $1 help\" to check availible options"
+        status=2
+    else
+        $(echo $cmd)
+        status=$?
+    fi
+fi
+
+
+if [ ! -z "$error" ]; then
+    echo "$error" >&2
+fi
+
+
+exit $status

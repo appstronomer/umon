@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # echo "apple;banana;cherry" | cut -d ';' -f 2
 # docker run -it --rm alpine:3.15 /bin/sh
@@ -42,6 +42,34 @@
 # docker compose build --no-cache && docker system prune -fa --filter label=project=appstronomer/umon --filter label=stage=intermediate && docker compose up --force-recreate
 # then old images will not be removed
 
-# docker compose build --no-cache && docker system prune -fa --filter label=project=appstronomer/umon --filter label=stage=intermediate && docker compose up --force-recreate
+# docker system prune --force --all --filter label=project=appstronomer/umon && docker compose build --no-cache && docker system prune -fa --filter label=project=appstronomer/umon --filter label=stage=intermediate && docker compose up --force-recreate
 
 # rm -rf './volume-dst/!(README.md)'
+
+# docker run -v $PWD/monitor/backend:/volume -v $PWD/cache/cargo-home:/cargo-home -v $PWD/volume-dst:/volume-dst -v  $PWD/monitor/sh-container:/sh-container --rm -t -e UIDGID=1000:1000 clux/muslrust:1.68.2 /sh-container/build-backend.sh
+
+# docker run -it --rm clux/muslrust:1.68.2 /bin/bash
+
+# https://stackoverflow.com/questions/10412162/how-can-i-simply-retrieve-the-absolute-path-of-the-current-script-multi-os-solu/12145443#12145443
+# SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+# echo "${BASH_SOURCE[0]}"
+# echo $SCRIPT_DIR
+
+if ! command -v readlink > /dev/null; then 
+    echo '[FAIL] readlink command is required for the script to work'
+    exit 1
+fi
+
+# snippet source: https://stackoverflow.com/questions/10412162/how-can-i-simply-retrieve-the-absolute-path-of-the-current-script-multi-os-solu/12145443#12145443
+self=$(
+    self=${0}
+    while [ -L "${self}" ]
+    do
+        cd "${self%/*}"
+        self=$(readlink "${self}")
+    done
+    cd "${self%/*}"
+    echo $(pwd -P)
+)
+
+echo "$self"

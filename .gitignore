@@ -1,3 +1,4 @@
 volume-dst/*
+cache/cargo-home
 
 !volume-dst/README.md
